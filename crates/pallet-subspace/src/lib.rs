@@ -43,7 +43,7 @@ use sp_consensus_subspace::digests::{
 };
 use sp_consensus_subspace::offence::{OffenceDetails, OffenceError, OnOffenceHandler};
 use sp_consensus_subspace::{
-    derive_randomness, verification, EquivocationProof, FarmerPublicKey, FarmerSignature,
+    derive_randomness, into_schnorrkel_pair, EquivocationProof, FarmerPublicKey, FarmerSignature,
     SignedVote, Vote,
 };
 use sp_runtime::generic::DigestItem;
@@ -1402,11 +1402,15 @@ fn check_vote<T: Config>(
         return Err(CheckVoteError::SlotInThePast);
     }
 
-    if let Err(error) = verification::check_reward_signature(
-        signed_vote.vote.hash().as_bytes(),
-        &signed_vote.signature,
-        &solution.public_key,
-        &schnorrkel::signing_context(REWARD_SIGNING_CONTEXT),
+    if let Err(error) = into_schnorrkel_pair(&solution.public_key, &signed_vote.signature).map(
+        |(public_key, signature)| {
+            subspace_consensus_primitives::check_signature(
+                &signature,
+                &public_key,
+                schnorrkel::signing_context(REWARD_SIGNING_CONTEXT)
+                    .bytes(signed_vote.vote.hash().as_bytes()),
+            )
+        },
     ) {
         debug!(
             target: "runtime::subspace",

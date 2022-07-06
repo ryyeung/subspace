@@ -17,7 +17,7 @@
 
 //! Verification for Subspace headers.
 use crate::digests::{CompatibleDigestItem, PreDigest};
-use crate::{find_pre_digest, FarmerPublicKey, FarmerSignature};
+use crate::{find_pre_digest, into_schnorrkel_pair, FarmerPublicKey, FarmerSignature};
 use codec::Decode;
 use schnorrkel::context::SigningContext;
 use schnorrkel::{PublicKey, Signature};
@@ -163,13 +163,15 @@ where
     }
 
     // Verify that block is signed properly
-    if check_reward_signature(
-        pre_hash.as_ref(),
-        &signature,
-        &pre_digest.solution.public_key,
-        reward_signing_context,
-    )
-    .is_err()
+    if into_schnorrkel_pair(&pre_digest.solution.public_key, &signature)
+        .map(|(public_key, signature)| {
+            subspace_consensus_primitives::check_signature(
+                &signature,
+                &public_key,
+                reward_signing_context.bytes(pre_hash.as_ref()),
+            )
+        })
+        .is_err()
     {
         return Err(VerificationError::BadRewardSignature(pre_hash));
     }
@@ -186,16 +188,4 @@ where
         header,
         VerifiedHeaderInfo { pre_digest, seal },
     ))
-}
-
-/// Check the reward signature validity.
-pub fn check_reward_signature(
-    hash: &[u8],
-    signature: &FarmerSignature,
-    public_key: &FarmerPublicKey,
-    reward_signing_context: &SigningContext,
-) -> Result<(), schnorrkel::SignatureError> {
-    let public_key = PublicKey::from_bytes(public_key.as_ref())?;
-    let signature = Signature::from_bytes(signature)?;
-    public_key.verify(reward_signing_context.bytes(hash), &signature)
 }

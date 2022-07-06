@@ -190,13 +190,15 @@ where
     };
     let pre_hash = header.hash();
 
-    verification::check_reward_signature(
-        pre_hash.as_ref(),
-        &seal,
-        offender,
-        &schnorrkel::signing_context(REWARD_SIGNING_CONTEXT),
-    )
-    .is_ok()
+    into_schnorrkel_pair(offender, &seal)
+        .map(|(public_key, signature)| {
+            subspace_consensus_primitives::check_signature(
+                &signature,
+                &public_key,
+                schnorrkel::signing_context(REWARD_SIGNING_CONTEXT).bytes(pre_hash.as_ref()),
+            )
+        })
+        .is_ok()
 }
 
 /// Verifies the equivocation proof by making sure that: both headers have
