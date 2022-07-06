@@ -187,6 +187,9 @@ pub enum Error<Header: HeaderT> {
     /// Bad reward signature
     #[error("Bad reward signature on {0:?}")]
     BadRewardSignature(Header::Hash),
+    /// Bad public key
+    #[error("Bad public key on slot {0:?}: {1:?}")]
+    BadPublicKey(Slot, schnorrkel::SignatureError),
     /// Bad solution signature
     #[error("Bad solution signature on slot {0:?}: {1:?}")]
     BadSolutionSignature(Slot, schnorrkel::SignatureError),
@@ -1087,13 +1090,17 @@ where
 
         // Piece is not checked during initial block verification because it requires access to
         // root block, check it now.
-        verification::check_piece(
-            pre_digest.slot,
+        let public_key = PublicKey::try_from(&pre_digest.solution.public_key)
+            .map_err(|err| Error::BadPublicKey(pre_digest.slot, err))?;
+        subspace_consensus_primitives::verify_piece(
+            &pre_digest.solution.encoding,
+            pre_digest.solution.piece_index,
             records_root,
             position,
             record_size,
-            &pre_digest.solution,
-        )?;
+            &public_key,
+        )
+        .map_err(|err| VerificationError::ConsensusError(pre_digest.slot, err))?;
 
         let parent_slot = find_pre_digest(&parent_header).map(|d| d.slot)?;
 

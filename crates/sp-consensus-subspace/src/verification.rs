@@ -24,10 +24,7 @@ use schnorrkel::{PublicKey, Signature};
 use sp_api::HeaderT;
 use sp_consensus_slots::Slot;
 use sp_runtime::DigestItem;
-use subspace_archiving::archiver;
 use subspace_consensus_primitives::ConsensusError;
-use subspace_core_primitives::{Randomness, Salt, Sha256Hash, Solution, Tag};
-use subspace_solving::SubspaceCodec;
 
 /// Errors encountered by the Subspace authorship task.
 #[derive(Debug, Eq, PartialEq)]
@@ -201,73 +198,4 @@ pub fn check_reward_signature(
     let public_key = PublicKey::from_bytes(public_key.as_ref())?;
     let signature = Signature::from_bytes(signature)?;
     public_key.verify(reward_signing_context.bytes(hash), &signature)
-}
-
-/// Check piece validity.
-///
-/// If `records_root` is `None`, piece validity check will be skipped.
-pub fn check_piece<Header, RewardAddress>(
-    slot: Slot,
-    records_root: Sha256Hash,
-    position: u64,
-    record_size: u32,
-    solution: &Solution<FarmerPublicKey, RewardAddress>,
-) -> Result<(), VerificationError<Header>>
-where
-    Header: HeaderT,
-{
-    let mut piece = solution.encoding.clone();
-
-    // Ensure piece is decodable.
-    let subspace_codec = SubspaceCodec::new(solution.public_key.as_ref());
-    subspace_codec
-        .decode(&mut piece, solution.piece_index)
-        .map_err(|_| VerificationError::InvalidEncoding(slot))?;
-
-    if !archiver::is_piece_valid(
-        &piece,
-        records_root,
-        position as usize,
-        record_size as usize,
-    ) {
-        return Err(VerificationError::InvalidEncoding(slot));
-    }
-
-    Ok(())
-}
-
-/// Returns true if `solution.tag` is within the solution range.
-pub fn is_within_solution_range(target: Tag, tag: Tag, solution_range: u64) -> bool {
-    let target = u64::from_be_bytes(target);
-    let tag = u64::from_be_bytes(tag);
-
-    subspace_core_primitives::bidirectional_distance(&target, &tag) <= solution_range / 2
-}
-
-/// Parameters for checking piece validity
-pub struct PieceCheckParams {
-    /// Records root of segment to which piece belongs
-    pub records_root: Sha256Hash,
-    /// Position of the piece in the segment
-    pub position: u64,
-    /// Record size, system parameter
-    pub record_size: u32,
-    /// Max plot size in pieces, system parameter
-    pub max_plot_size: u64,
-    /// Total number of pieces in the whole archival history
-    pub total_pieces: u64,
-}
-
-/// Parameters for solution verification
-pub struct VerifySolutionParams<'a> {
-    /// Global randomness
-    pub global_randomness: &'a Randomness,
-    /// Solution range
-    pub solution_range: u64,
-    /// Salt
-    pub salt: Salt,
-    /// Parameters for checking piece validity.
-    ///
-    /// If `None`, piece validity check will be skipped.
-    pub piece_check_params: Option<PieceCheckParams>,
 }
