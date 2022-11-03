@@ -7,7 +7,13 @@ mod tests;
 
 extern crate alloc;
 
+use alloc::borrow::Cow;
+use alloc::vec;
 use alloc::vec::Vec;
+use ark_bls12_381::{Bls12_381, Fr};
+use ark_poly::univariate::DensePolynomial;
+use ark_poly::{GeneralEvaluationDomain, UVPolynomial};
+use ark_poly_commit::kzg10::{Powers, Proof, VerifierKey, KZG10};
 use dusk_bls12_381::{G1Affine, G2Affine, G2Prepared};
 pub use dusk_bytes;
 use dusk_bytes::{DeserializableSlice, Serializable};
@@ -18,6 +24,7 @@ use dusk_plonk::fft::domain::EvaluationDomain;
 use dusk_plonk::fft::evaluations::Evaluations;
 use dusk_plonk::fft::polynomial::Polynomial as PlonkPolynomial;
 use dusk_plonk::prelude::BlsScalar;
+use num_traits::One;
 use parity_scale_codec::{Decode, Encode, EncodeLike, Input};
 use scale_info::{Type, TypeInfo};
 
@@ -392,5 +399,169 @@ impl Kzg {
         .final_exponentiation();
 
         pairing == dusk_bls12_381::Gt::identity()
+    }
+}
+
+/// Wrapper data structure for working with KZG commitment scheme
+#[derive(Debug, Clone)]
+pub struct Kzg2 {
+    domain: GeneralEvaluationDomain<Fr>,
+    powers: Powers<'static, Bls12_381>,
+    verifier_key: VerifierKey<Bls12_381>,
+}
+
+// Most of below implementation and comments are basically taken following code samples (and
+// adapted):
+// https://github.com/subspace/plonk/blob/65db5f0da6edef54048ddbf4495c6c5b4a664dff/src/commitment_scheme/kzg10/key.rs
+// https://github.com/maticnetwork/avail/blob/76e2b45d13975ba87b632f62f29497f279986cbc/kate/src/com.rs
+// https://github.com/maticnetwork/avail/blob/76e2b45d13975ba87b632f62f29497f279986cbc/kate/proof/src/lib.rs
+impl Kzg2 {
+    /// Create new instance with given public parameters.
+    ///
+    /// Returns `None` in case evaluation domain can't be constructed, which typically means a
+    /// catastrophic error and shouldn't really ever happen.
+    pub fn new(
+        powers: Powers<'static, Bls12_381>,
+        verifier_key: VerifierKey<Bls12_381>,
+    ) -> Option<Self> {
+        // TODO: `powers.size()` coincides with max degree, but maybe we should make it an explicit
+        //  parameter?
+        let domain = ark_poly::domain::EvaluationDomain::<Fr>::new(powers.size())?;
+
+        Some(Self {
+            domain,
+            powers,
+            verifier_key,
+        })
+    }
+
+    #[cfg(feature = "std")]
+    /// For testing purposes only.
+    ///
+    /// Returns an error if the configured degree is less than one.
+    pub fn random(max_degree: u32) -> Result<Self, ark_poly_commit::Error> {
+        let max_degree = max_degree
+            .try_into()
+            .expect("Always fits into usize on 32-bit+ platforms; qed");
+        let kzg10_pp = KZG10::<Bls12_381, DensePolynomial<Fr>>::setup(
+            max_degree,
+            false,
+            &mut rand::thread_rng(),
+        )?;
+        let g = kzg10_pp.powers_of_g[0];
+        let powers_of_g = kzg10_pp
+            .powers_of_g
+            .into_iter()
+            .take(max_degree + 1)
+            .collect();
+        let gamma_g = kzg10_pp.powers_of_gamma_g[&0];
+        let powers_of_gamma_g = kzg10_pp
+            .powers_of_gamma_g
+            .into_values()
+            .take(max_degree + 1)
+            .collect();
+        let powers = Powers {
+            powers_of_g: Cow::Owned(powers_of_g),
+            powers_of_gamma_g: Cow::Owned(powers_of_gamma_g),
+        };
+        let verifier_key = VerifierKey::<Bls12_381> {
+            g,
+            gamma_g,
+            h: kzg10_pp.h,
+            beta_h: kzg10_pp.beta_h,
+            prepared_h: kzg10_pp.prepared_h.clone(),
+            prepared_beta_h: kzg10_pp.prepared_beta_h,
+        };
+        // TODO: `powers.size()` coincides with max degree, but maybe we should make it an explicit
+        //  parameter?
+        let domain = ark_poly::domain::EvaluationDomain::<Fr>::new(max_degree)
+            .expect("Above would have failed if this input was correct; qed");
+        Ok(Self {
+            domain,
+            powers,
+            verifier_key,
+        })
+    }
+
+    // /// Runs a one-time trusted setup of the universal reference values `KZG_PARAMETERS`. The
+    // /// initial `seed` for value generation can be provided by a multi-party computation at genesis.
+    // fn setup(seed: &[u8]) -> PublicParameters {
+    //     todo!()
+    // }
+
+    /// Represents data as a `polynomial` needed for the rest of the scheme.
+    pub fn poly(&self, data: Vec<Fr>) -> DensePolynomial<Fr> {
+        let poly_evals =
+            ark_poly::evaluations::univariate::Evaluations::from_vec_and_domain(data, self.domain);
+        poly_evals.interpolate()
+    }
+
+    /// Computes a `Commitment` to `polynomial`
+    pub fn commit(
+        &self,
+        polynomial: &DensePolynomial<Fr>,
+    ) -> Result<ark_bls12_381::G1Affine, ark_poly_commit::Error> {
+        Ok(KZG10::commit(&self.powers, polynomial, None, None)?.0 .0)
+    }
+
+    /// Computes a `Witness` of evaluation of `polynomial` at `index`
+    pub fn create_witness(
+        &self,
+        polynomial: &DensePolynomial<Fr>,
+        index: u32,
+    ) -> Result<ark_bls12_381::G1Affine, ark_poly_commit::Error> {
+        assert!(
+            (usize::try_from(index).expect("Always fits into usize on 32-bit+ platforms; qed"))
+                <= ark_poly::Polynomial::degree(polynomial)
+        );
+        // let proof = KZG10::open(&self.powers, &polynomial, self.domain.element(index), None)?;
+        // Unfortunately, KZG10::open() is pub(crate) only, so inline ... >>>
+        let point = ark_poly::domain::EvaluationDomain::<Fr>::element(
+            &self.domain,
+            index
+                .try_into()
+                .expect("Always fits into usize on 32-bit+ platforms; qed"),
+        );
+        assert!(ark_poly::Polynomial::degree(polynomial) < self.powers.size());
+        let divisor = DensePolynomial::<Fr>::from_coefficients_vec(vec![-point, Fr::one()]);
+        let witness_polynomial = polynomial / &divisor;
+        assert!(ark_poly::Polynomial::degree(&witness_polynomial) < self.powers.size());
+        // <<< ... end of inline!
+
+        Ok(
+            KZG10::commit(&self.powers, &witness_polynomial, None, None)?
+                .0
+                 .0,
+        )
+    }
+
+    /// Verifies that `value` is the evaluation at `index` of the polynomial created from values
+    /// matching the `commitment`.
+    pub fn verify(
+        &self,
+        commitment: ark_bls12_381::G1Affine,
+        index: u32,
+        value: Fr,
+        witness: ark_bls12_381::G1Affine,
+    ) -> bool {
+        let commitment = ark_poly_commit::kzg10::Commitment::<Bls12_381>(commitment);
+        let point = ark_poly::domain::EvaluationDomain::<Fr>::element(
+            &self.domain,
+            index
+                .try_into()
+                .expect("Always fits into usize on 32-bit+ platforms; qed"),
+        );
+        let proof = Proof {
+            w: witness,
+            random_v: None,
+        };
+        KZG10::<Bls12_381, DensePolynomial<Fr>>::check(
+            &self.verifier_key,
+            &commitment,
+            point,
+            value,
+            &proof,
+        )
+        .unwrap()
     }
 }

@@ -18,7 +18,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(rust_2018_idioms, missing_docs)]
 #![cfg_attr(feature = "std", warn(missing_debug_implementations))]
-#![feature(int_log)]
+#![feature(int_log, int_roundings)]
 
 #[cfg(test)]
 mod tests;

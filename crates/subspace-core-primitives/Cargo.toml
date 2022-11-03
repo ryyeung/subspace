@@ -17,6 +17,10 @@ bench = false
 
 
 [dependencies]
+ark-bls12-381 = "0.3.0"
+ark-ff = "0.3.0"
+ark-poly = "0.3.0"
+ark-poly-commit = { version = "0.3.0", default-features = false }
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
 # Not using `blake2` crate due to https://github.com/RustCrypto/hashes/issues/360
 blake2-rfc = { version = "0.2.18", default-features = false }
@@ -41,6 +45,11 @@ criterion = "0.4.0"
 [features]
 default = ["std"]
 std = [
+    "ark-bls12-381/std",
+    "ark-ff/std",
+    "ark-poly/std",
+    "ark-poly-commit/parallel",
+    "ark-poly-commit/std",
     "bitvec/std",
     "blake2-rfc/std",
     "dusk-bls12_381/std",
