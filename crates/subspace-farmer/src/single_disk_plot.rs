@@ -45,7 +45,7 @@ use subspace_networking::Node;
 use subspace_rpc_primitives::SolutionResponse;
 use thiserror::Error;
 use tokio::runtime::Handle;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use tracing::{debug, error, info, info_span, trace, Instrument, Span};
 use ulid::Ulid;
 
@@ -455,6 +455,7 @@ pub struct SingleDiskPlot {
     /// Sender that will be used to signal to background threads that they should start
     start_sender: Option<broadcast::Sender<()>>,
     shutting_down: Arc<AtomicBool>,
+    new_solution_receiver: watch::Receiver<SolutionResponse>,
 }
 
 impl Drop for SingleDiskPlot {
@@ -780,6 +781,11 @@ impl SingleDiskPlot {
                 .map(&metadata_file)?
         };
 
+        let (new_solution_sender, new_solution_receiver) = watch::channel(SolutionResponse {
+            slot_number: 0,
+            solutions: vec![],
+        });
+
         let farming_join_handle = thread::Builder::new()
             .name(format!("f-{single_disk_plot_id}"))
             .spawn({
@@ -890,11 +896,13 @@ impl SingleDiskPlot {
                                 solutions.push(solution);
                             }
 
+                            let response = SolutionResponse {
+                                slot_number: slot_info.slot_number,
+                                solutions,
+                            };
+                            let _ = new_solution_sender.send(response.clone());
                             handle
-                                .block_on(rpc_client.submit_solution_response(SolutionResponse {
-                                    slot_number: slot_info.slot_number,
-                                    solutions,
-                                }))
+                                .block_on(rpc_client.submit_solution_response(response))
                                 .map_err(|error| FarmingError::FailedToSubmitSolutionsResponse {
                                     error,
                                 })?;
@@ -984,6 +992,7 @@ impl SingleDiskPlot {
             _reading_join_handle: JoinOnDrop::new(reading_join_handle),
             start_sender: Some(start_sender),
             shutting_down,
+            new_solution_receiver,
         };
 
         Ok(farm)
@@ -1010,6 +1019,10 @@ impl SingleDiskPlot {
     /// ID of this farm
     pub fn id(&self) -> &SingleDiskPlotId {
         self.single_disk_plot_info.id()
+    }
+
+    pub fn subscribe_new_solutions(&self) -> watch::Receiver<SolutionResponse> {
+        self.new_solution_receiver.clone()
     }
 
     /// Number of sectors successfully plotted so far
