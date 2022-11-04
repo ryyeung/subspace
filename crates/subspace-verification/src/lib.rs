@@ -67,7 +67,6 @@ pub fn check_reward_signature(
 /// If `records_root` is `None`, piece validity check will be skipped.
 pub fn check_piece<'a, FarmerPublicKey, RewardAddress>(
     kzg: &Kzg,
-    pieces_in_segment: u32,
     records_root: &RecordsRoot,
     position: u32,
     solution: &'a Solution<FarmerPublicKey, RewardAddress>,
@@ -77,7 +76,6 @@ where
 {
     if !archiver::is_piece_record_hash_valid(
         kzg,
-        pieces_in_segment,
         &solution.piece_record_hash,
         records_root,
         &solution.piece_witness,
@@ -108,8 +106,6 @@ pub struct PieceCheckParams<'a> {
     pub position: u32,
     /// KZG instance
     pub kzg: &'a Kzg,
-    /// Number of pieces in a segment
-    pub pieces_in_segment: u32,
 }
 
 /// Parameters for solution verification
@@ -168,7 +164,6 @@ where
         records_root,
         position,
         kzg,
-        pieces_in_segment,
     }) = piece_check_params
     {
         // TODO: Derive `position` in the future and delete `piece_offset` from solution, example
@@ -183,7 +178,7 @@ where
         //     .expect("Position within segment always fits into u32; qed");
         // TODO: Check that chunk belongs to a piece
 
-        check_piece(kzg, pieces_in_segment, records_root, position, solution)?;
+        check_piece(kzg, records_root, position, solution)?;
     }
 
     Ok(())

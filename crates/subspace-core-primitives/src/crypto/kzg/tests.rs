@@ -20,7 +20,6 @@ fn basic() {
     let commitment = kzg.commit(&polynomial).unwrap();
 
     let values = data.chunks_exact(BlsScalar::SIZE);
-    let num_values = values.len() as u32;
 
     for (index, value) in values.enumerate() {
         let index = index.try_into().unwrap();
@@ -28,7 +27,7 @@ fn basic() {
         let witness = kzg.create_witness(&polynomial, index).unwrap();
 
         assert!(
-            kzg.verify(&commitment, num_values, index, value, &witness),
+            kzg.verify(&commitment, index, value, &witness),
             "failed on index {index}"
         );
     }

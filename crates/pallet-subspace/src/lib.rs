@@ -1338,7 +1338,6 @@ fn check_vote<T: Config>(
                 records_root: &records_root,
                 position,
                 kzg: &kzg,
-                pieces_in_segment,
             }),
         },
     ) {

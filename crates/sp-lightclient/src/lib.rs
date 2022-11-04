@@ -367,7 +367,6 @@ impl<Header: HeaderT, Store: Storage<Header>> HeaderImporter<Header, Store> {
                     records_root: &records_root,
                     position,
                     kzg: &kzg,
-                    pieces_in_segment: PIECES_IN_SEGMENT,
                 }),
             },
         )

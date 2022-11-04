@@ -957,7 +957,6 @@ where
         // root block, check it now.
         subspace_verification::check_piece(
             &self.subspace_link.kzg,
-            PIECES_IN_SEGMENT,
             &records_root,
             position,
             &pre_digest.solution,

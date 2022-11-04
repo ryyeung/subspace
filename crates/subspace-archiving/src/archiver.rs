@@ -31,8 +31,8 @@ use subspace_core_primitives::objects::{
     BlockObject, BlockObjectMapping, PieceObject, PieceObjectMapping,
 };
 use subspace_core_primitives::{
-    crypto, ArchivedBlockProgress, Blake2b256Hash, BlockNumber, FlatPieces, LastArchivedBlock,
-    RootBlock, BLAKE2B_256_HASH_SIZE, WITNESS_SIZE,
+    ArchivedBlockProgress, Blake2b256Hash, BlockNumber, FlatPieces, LastArchivedBlock, RootBlock,
+    BLAKE2B_256_HASH_SIZE, WITNESS_SIZE,
 };
 
 const INITIAL_LAST_ARCHIVED_BLOCK: LastArchivedBlock = LastArchivedBlock {
@@ -729,7 +729,6 @@ impl Archiver {
 /// Validate witness embedded within a piece produced by archiver
 pub fn is_piece_valid(
     kzg: &Kzg,
-    num_pieces_in_segment: u32,
     piece: &[u8],
     commitment: Commitment,
     position: u32,
@@ -746,31 +745,18 @@ pub fn is_piece_valid(
             return false;
         }
     };
-    let leaf_hash = crypto::blake2b_256_254_hash(record);
+    let leaf_hash = blake2b_256_254_hash(record);
 
-    kzg.verify(
-        &commitment,
-        num_pieces_in_segment,
-        position,
-        &leaf_hash,
-        &witness,
-    )
+    kzg.verify(&commitment, position, &leaf_hash, &witness)
 }
 
 /// Validate witness for pieces record hash produced by archiver
 pub fn is_piece_record_hash_valid(
     kzg: &Kzg,
-    num_pieces_in_segment: u32,
     piece_record_hash: &Blake2b256Hash,
     commitment: &Commitment,
     witness: &Witness,
     position: u32,
 ) -> bool {
-    kzg.verify(
-        commitment,
-        num_pieces_in_segment,
-        position,
-        piece_record_hash,
-        witness,
-    )
+    kzg.verify(commitment, position, piece_record_hash, witness)
 }

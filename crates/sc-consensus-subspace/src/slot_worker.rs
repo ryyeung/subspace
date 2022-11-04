@@ -257,7 +257,6 @@ where
                         records_root: &records_root,
                         position,
                         kzg: &self.subspace_link.kzg,
-                        pieces_in_segment: PIECES_IN_SEGMENT,
                     }),
                 },
             );

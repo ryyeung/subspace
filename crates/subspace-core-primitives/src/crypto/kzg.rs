@@ -246,6 +246,7 @@ impl TypeInfo for Witness {
 /// Wrapper data structure for working with KZG commitment scheme
 #[derive(Debug, Clone)]
 pub struct Kzg {
+    domain: EvaluationDomain,
     public_parameters: PublicParameters,
 }
 
@@ -257,7 +258,13 @@ pub struct Kzg {
 impl Kzg {
     /// Create new instance with given public parameters
     pub fn new(public_parameters: PublicParameters) -> Self {
-        Self { public_parameters }
+        let domain = EvaluationDomain::new(public_parameters.max_degree())
+            .expect("Pre-computed public parameters must be correct");
+
+        Self {
+            domain,
+            public_parameters,
+        }
     }
 
     #[cfg(feature = "std")]
@@ -265,9 +272,16 @@ impl Kzg {
     ///
     /// Returns an error if the configured degree is less than one.
     pub fn random(max_degree: u32) -> Result<Self, Error> {
-        let public_parameters =
-            PublicParameters::setup(max_degree as usize, &mut rand::thread_rng())?;
-        Ok(Self { public_parameters })
+        let max_degree = max_degree
+            .try_into()
+            .expect("Always fits into usize on 32-bit+ platforms; qed");
+        let public_parameters = PublicParameters::setup(max_degree, &mut rand::thread_rng())?;
+        let domain = EvaluationDomain::new(max_degree)?;
+
+        Ok(Self {
+            domain,
+            public_parameters,
+        })
     }
 
     // /// Runs a one-time trusted setup of the universal reference values `KZG_PARAMETERS`. The
@@ -316,9 +330,8 @@ impl Kzg {
         // witness as f(x) / x - z and only use the remainder term f(z) during
         // verification.
 
-        // Generate all the x-axis points of the domain on which all the row polynomials reside
-        let eval_domain = EvaluationDomain::new(polynomial_degree)?;
-        let point = eval_domain
+        let point = self
+            .domain
             .elements()
             .nth(
                 index
@@ -341,30 +354,12 @@ impl Kzg {
     pub fn verify(
         &self,
         commitment: &Commitment,
-        num_values: u32,
         index: u32,
         value: &[u8],
         witness: &Witness,
     ) -> bool {
-        let degree_of_polynomial = match num_values.checked_sub(1) {
-            Some(degree_of_polynomial) => degree_of_polynomial,
-            None => {
-                return false;
-            }
-        };
-
-        // Generate all the x-axis points of the domain on which all the row polynomials reside
-        let eval_domain = match EvaluationDomain::new(
-            degree_of_polynomial
-                .try_into()
-                .expect("Always fits into usize on 32-bit+ platforms; qed"),
-        ) {
-            Ok(eval_domain) => eval_domain,
-            Err(_error) => {
-                return false;
-            }
-        };
-        let point = eval_domain
+        let point = self
+            .domain
             .elements()
             .nth(
                 index
