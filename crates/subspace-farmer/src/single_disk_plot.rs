@@ -455,6 +455,7 @@ pub struct SingleDiskPlot {
     _reading_join_handle: JoinOnDrop,
     /// Sender that will be used to signal to background threads that they should start
     start_sender: Option<broadcast::Sender<()>>,
+    farming: Arc<AtomicBool>,
     shutting_down: Arc<AtomicBool>,
 }
 
@@ -781,6 +782,8 @@ impl SingleDiskPlot {
                 .map(&metadata_file)?
         };
 
+        let farming = Arc::new(AtomicBool::new(false));
+
         let farming_join_handle = thread::Builder::new()
             .name(format!("f-{single_disk_plot_id}"))
             .spawn({
@@ -791,6 +794,7 @@ impl SingleDiskPlot {
                 let shutting_down = Arc::clone(&shutting_down);
                 let identity = identity.clone();
                 let rpc_client = rpc_client.clone();
+                let farming = Arc::clone(&farming);
 
                 move || {
                     let _tokio_handle_guard = handle.enter();
@@ -806,102 +810,124 @@ impl SingleDiskPlot {
                         info!("Subscribing to slot info notifications");
                         let mut slot_info_notifications = handle
                             .block_on(rpc_client.subscribe_slot_info())
-                            .map_err(|error| FarmingError::FailedToGetFarmerProtocolInfo {
-                                error,
-                            })?;
+                            .map_err(|error| FarmingError::FailedToGetFarmerProtocolInfo { error })?
+                            .fuse();
 
-                        while let Some(slot_info) = handle.block_on(slot_info_notifications.next())
-                        {
-                            debug!(?slot_info, "New slot");
-
-                            let sector_count = metadata_header.lock().sector_count;
-                            let plot_mmap = unsafe {
-                                MmapOptions::new()
-                                    .len((plot_sector_size * sector_count) as usize)
-                                    .map(&plot_file)
-                                    .map_err(|error| FarmingError::FailedToMapPlot { error })?
-                            };
-                            #[cfg(unix)]
-                            {
-                                plot_mmap
-                                    .advise(memmap2::Advice::Random)
-                                    .map_err(FarmingError::Io)?;
-                            }
-                            let metadata_mmap = unsafe {
-                                MmapOptions::new()
-                                    .offset(RESERVED_PLOT_METADATA)
-                                    .len(SectorMetadata::encoded_size() * sector_count as usize)
-                                    .map(&metadata_file)
-                                    .map_err(|error| FarmingError::FailedToMapMetadata { error })?
-                            };
-                            #[cfg(unix)]
-                            {
-                                metadata_mmap
-                                    .advise(memmap2::Advice::Random)
-                                    .map_err(FarmingError::Io)?;
-                            }
-                            let shutting_down = Arc::clone(&shutting_down);
-
-                            let mut solutions = Vec::<Solution<PublicKey, PublicKey>>::new();
-
-                            for (sector_index, sector, sector_metadata) in plot_mmap
-                                .chunks_exact(plot_sector_size as usize)
-                                .zip(metadata_mmap.chunks_exact(SectorMetadata::encoded_size()))
-                                .enumerate()
-                                .map(|(sector_index, (sector, metadata))| {
-                                    (sector_index as u64 + first_sector_index, sector, metadata)
-                                })
-                            {
+                        'farming_loop: loop {
+                            while !farming.load(Ordering::Acquire) {
                                 if shutting_down.load(Ordering::Acquire) {
-                                    debug!(
-                                        %sector_index,
-                                        "Instance is shutting down, interrupting plotting"
-                                    );
+                                    debug!("Instance is shutting down, interrupting plotting");
                                     return;
                                 }
-
-                                let eligible_sector = match audit_sector(
-                                    &public_key,
-                                    sector_index,
-                                    &farmer_protocol_info,
-                                    &slot_info.global_challenge,
-                                    slot_info.voting_solution_range,
-                                    io::Cursor::new(sector),
-                                )? {
-                                    Some(eligible_sector) => eligible_sector,
-                                    None => {
-                                        continue;
-                                    }
-                                };
-
-                                let solution = match eligible_sector.try_into_solution(
-                                    &identity,
-                                    reward_address,
-                                    &farmer_protocol_info,
-                                    sector_metadata,
-                                )? {
-                                    Some(solution) => solution,
-                                    None => {
-                                        continue;
-                                    }
-                                };
-
-                                debug!("Solution found");
-                                trace!(?solution, "Solution found");
-
-                                solutions.push(solution);
+                                std::thread::yield_now();
                             }
 
-                            let response = SolutionResponse {
-                                slot_number: slot_info.slot_number,
-                                solutions,
-                            };
-                            handlers.solution.call_simple(&response);
-                            handle
-                                .block_on(rpc_client.submit_solution_response(response))
-                                .map_err(|error| FarmingError::FailedToSubmitSolutionsResponse {
-                                    error,
-                                })?;
+                            while let Some(slot_info) =
+                                handle.block_on(slot_info_notifications.next())
+                            {
+                                if !farming.load(Ordering::Acquire) {
+                                    debug!("Farming was interrupted");
+                                    continue 'farming_loop;
+                                }
+                                debug!(?slot_info, "New slot");
+
+                                let sector_count = metadata_header.lock().sector_count;
+                                let plot_mmap = unsafe {
+                                    MmapOptions::new()
+                                        .len((plot_sector_size * sector_count) as usize)
+                                        .map(&plot_file)
+                                        .map_err(|error| FarmingError::FailedToMapPlot { error })?
+                                };
+                                #[cfg(unix)]
+                                {
+                                    plot_mmap
+                                        .advise(memmap2::Advice::Random)
+                                        .map_err(FarmingError::Io)?;
+                                }
+                                let metadata_mmap = unsafe {
+                                    MmapOptions::new()
+                                        .offset(RESERVED_PLOT_METADATA)
+                                        .len(SectorMetadata::encoded_size() * sector_count as usize)
+                                        .map(&metadata_file)
+                                        .map_err(|error| FarmingError::FailedToMapMetadata {
+                                            error,
+                                        })?
+                                };
+                                #[cfg(unix)]
+                                {
+                                    metadata_mmap
+                                        .advise(memmap2::Advice::Random)
+                                        .map_err(FarmingError::Io)?;
+                                }
+                                let shutting_down = Arc::clone(&shutting_down);
+
+                                let mut solutions = Vec::<Solution<PublicKey, PublicKey>>::new();
+
+                                for (sector_index, sector, sector_metadata) in plot_mmap
+                                    .chunks_exact(plot_sector_size as usize)
+                                    .zip(metadata_mmap.chunks_exact(SectorMetadata::encoded_size()))
+                                    .enumerate()
+                                    .map(|(sector_index, (sector, metadata))| {
+                                        (sector_index as u64 + first_sector_index, sector, metadata)
+                                    })
+                                {
+                                    if shutting_down.load(Ordering::Acquire) {
+                                        debug!(
+                                            %sector_index,
+                                            "Instance is shutting down, interrupting plotting"
+                                        );
+                                        return;
+                                    }
+                                    if !farming.load(Ordering::Acquire) {
+                                        debug!(%sector_index, "Farming was interrupted");
+                                        continue 'farming_loop;
+                                    }
+
+                                    let eligible_sector = match audit_sector(
+                                        &public_key,
+                                        sector_index,
+                                        &farmer_protocol_info,
+                                        &slot_info.global_challenge,
+                                        slot_info.voting_solution_range,
+                                        io::Cursor::new(sector),
+                                    )? {
+                                        Some(eligible_sector) => eligible_sector,
+                                        None => {
+                                            continue;
+                                        }
+                                    };
+
+                                    let solution = match eligible_sector.try_into_solution(
+                                        &identity,
+                                        reward_address,
+                                        &farmer_protocol_info,
+                                        sector_metadata,
+                                    )? {
+                                        Some(solution) => solution,
+                                        None => {
+                                            continue;
+                                        }
+                                    };
+
+                                    debug!("Solution found");
+                                    trace!(?solution, "Solution found");
+
+                                    solutions.push(solution);
+                                }
+
+                                let response = SolutionResponse {
+                                    slot_number: slot_info.slot_number,
+                                    solutions,
+                                };
+                                handlers.solution.call_simple(&response);
+                                handle
+                                    .block_on(rpc_client.submit_solution_response(response))
+                                    .map_err(|error| {
+                                        FarmingError::FailedToSubmitSolutionsResponse { error }
+                                    })?;
+                            }
+
+                            break;
                         }
                     };
 
@@ -988,6 +1014,7 @@ impl SingleDiskPlot {
             _reading_join_handle: JoinOnDrop::new(reading_join_handle),
             start_sender: Some(start_sender),
             shutting_down,
+            farming,
         };
 
         Ok(farm)
@@ -1058,6 +1085,11 @@ impl SingleDiskPlot {
                     piece_indexes,
                 })
             })
+    }
+
+    /// Get farming flag which you can mutate and change state of farming thread
+    pub fn farming_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.farming)
     }
 
     /// Get piece reader to read plot pieces later

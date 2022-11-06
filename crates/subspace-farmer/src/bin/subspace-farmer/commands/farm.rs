@@ -175,6 +175,9 @@ pub(crate) async fn farm_multi_disk(
                 }))
                 .detach();
 
+            single_disk_plot
+                .farming_flag()
+                .store(true, std::sync::atomic::Ordering::SeqCst);
             single_disk_plot.run()
         })
         .collect::<FuturesUnordered<_>>();
