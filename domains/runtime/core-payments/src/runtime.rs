@@ -448,6 +448,20 @@ impl_runtime_apis! {
         }
     }
 
+    impl sp_domains::state_root_tracker::DomainTrackerApi<Block, BlockNumber> for Runtime {
+        fn storage_key_for_core_domain_state_root(
+            _domain_id: DomainId,
+            _block_number: BlockNumber,
+        ) -> Option<Vec<u8>> {
+            // return none since Core domain do not track other core domain state roots.
+            None
+        }
+
+        fn best_known_block_number(domain_id: DomainId) -> Option<BlockNumber> {
+            DomainTracker::best_known_block_number(domain_id)
+        }
+    }
+
     impl sp_messenger::RelayerApi<Block, RelayerId, BlockNumber> for Runtime {
         fn domain_id() -> DomainId {
             CorePaymentsDomainId::get()

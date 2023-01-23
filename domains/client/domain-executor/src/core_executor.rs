@@ -14,6 +14,7 @@ use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_slots::Slot;
 use sp_core::traits::{CodeExecutor, SpawnEssentialNamed, SpawnNamed};
+use sp_domains::state_root_tracker::DomainTrackerApi;
 use sp_domains::{DomainId, ExecutorApi};
 use sp_runtime::traits::{Block as BlockT, HashFor, NumberFor};
 use std::marker::PhantomData;
@@ -61,6 +62,7 @@ where
         + ProofProvider<Block>
         + 'static,
     Client::Api: DomainCoreApi<Block, AccountId>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + sp_block_builder::BlockBuilder<Block>
         + sp_api::ApiExt<Block, StateBackend = StateBackendFor<Backend, Block>>,
     for<'b> &'b Client: sc_consensus::BlockImport<

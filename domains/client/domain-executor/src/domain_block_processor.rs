@@ -10,13 +10,15 @@ use sc_consensus::{
 };
 use sc_network::NetworkService;
 use sp_api::{NumberFor, ProvideRuntimeApi};
-use sp_blockchain::{HashAndNumber, HeaderBackend, HeaderMetadata};
+use sp_blockchain::{Error, HashAndNumber, HeaderBackend, HeaderMetadata};
 use sp_consensus::{BlockOrigin, SyncOracle};
 use sp_core::traits::CodeExecutor;
+use sp_domain_digests::AsPredigest;
 use sp_domains::fraud_proof::FraudProof;
-use sp_domains::{DomainId, ExecutionReceipt, ExecutorApi, OpaqueBundles};
+use sp_domains::state_root_tracker::{DomainTrackerApi, StateRootUpdate};
+use sp_domains::{BundleSolution, DomainId, ExecutionReceipt, ExecutorApi, OpaqueBundles};
 use sp_runtime::generic::{BlockId, DigestItem};
-use sp_runtime::traits::{Block as BlockT, HashFor, Header as HeaderT, One, Zero};
+use sp_runtime::traits::{Block as BlockT, CheckedSub, HashFor, Header as HeaderT, One, Zero};
 use sp_runtime::Digest;
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -164,6 +166,7 @@ where
     Client:
         HeaderBackend<Block> + BlockBackend<Block> + AuxStore + ProvideRuntimeApi<Block> + 'static,
     Client::Api: DomainCoreApi<Block, AccountId>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + sp_block_builder::BlockBuilder<Block>
         + sp_api::ApiExt<Block, StateBackend = StateBackendFor<Backend, Block>>,
     for<'b> &'b Client: BlockImport<
@@ -338,7 +341,7 @@ where
                                 "Failed to decode the opaque extrisic in bundle, this should not happen"
                             );
                             None
-                        },
+                        }
                     }
                 })
             })
@@ -536,7 +539,7 @@ where
                 return Err(sp_consensus::Error::ClientImport(format!(
                     "Parent state of block #{header_number}({header_hash:?}) is missing, parent: {parent_hash:?}"
                 ))
-                .into());
+                    .into());
             }
         }
 
@@ -738,5 +741,100 @@ where
         }
 
         Ok(None)
+    }
+
+    pub fn system_domain_state_root_updates_digest(
+        &self,
+        parent_hash: Block::Hash,
+        bundles: &DomainBundles<Block, PBlock>,
+    ) -> Result<DigestItem, sp_blockchain::Error> {
+        let bundles = match bundles {
+            DomainBundles::System(system_bundles, _core_bundles) => system_bundles,
+            DomainBundles::Core(core_bundles) => core_bundles,
+        };
+
+        let bundle_solutions = bundles
+            .iter()
+            .map(|signed_bundle| &signed_bundle.bundle_solution)
+            .collect();
+
+        let updates =
+            self.collect_system_domain_state_root_updates(parent_hash, bundle_solutions)?;
+
+        Ok(DigestItem::system_domain_state_root_updates(updates))
+    }
+
+    fn collect_system_domain_state_root_updates(
+        &self,
+        parent_hash: Block::Hash,
+        bundle_solutions: Vec<&BundleSolution<Block::Hash>>,
+    ) -> Result<Vec<StateRootUpdate<NumberFor<Block>, Block::Hash>>, sp_blockchain::Error> {
+        let api = self.client.runtime_api();
+        let parent_id = &BlockId::Hash(parent_hash);
+
+        let (best_known_number, best_known_hash) = bundle_solutions
+            .into_iter()
+            .map(|bundle_solution| match bundle_solution {
+                BundleSolution::System(election) => {
+                    (election.block_number.into(), election.block_hash)
+                }
+                BundleSolution::Core {
+                    proof_of_election, ..
+                } => (
+                    proof_of_election.block_number.into(),
+                    proof_of_election.block_hash,
+                ),
+            })
+            .fold(
+                (Zero::zero(), Default::default()),
+                |(best_number, best_hash), (number, hash)| {
+                    if number > best_number {
+                        (number, hash)
+                    } else {
+                        (best_number, best_hash)
+                    }
+                },
+            );
+
+        let known_best = match api.best_known_block_number(parent_id, DomainId::SYSTEM)? {
+            None => {
+                // first update, so send our best known
+                let update = StateRootUpdate {
+                    number: best_known_number,
+                    state_root: *self
+                        .client
+                        .header(best_known_hash)?
+                        .ok_or_else(|| Error::MissingHeader(format!("{best_known_hash}")))?
+                        .state_root(),
+                };
+
+                return Ok(vec![update]);
+            }
+            Some(number) => number,
+        };
+
+        // collect the state roots tracing the tree back to known best
+        let mut updates = vec![];
+        let mut best_known_number = best_known_number;
+        let mut best_known_hash = best_known_hash;
+
+        while best_known_number > known_best {
+            let header = self
+                .client
+                .header(best_known_hash)?
+                .ok_or_else(|| Error::MissingHeader(format!("{best_known_hash}")))?;
+
+            updates.push(StateRootUpdate {
+                number: best_known_number,
+                state_root: *header.state_root(),
+            });
+
+            best_known_hash = *header.parent_hash();
+            best_known_number = best_known_number
+                .checked_sub(&One::one())
+                .unwrap_or(known_best);
+        }
+
+        Ok(updates)
     }
 }

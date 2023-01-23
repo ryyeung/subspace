@@ -30,6 +30,7 @@ use sp_block_builder::BlockBuilder;
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus_slots::Slot;
 use sp_core::traits::CodeExecutor;
+use sp_domains::state_root_tracker::DomainTrackerApi;
 use sp_domains::ExecutorApi;
 use sp_runtime::traits::{HashFor, NumberFor};
 use std::sync::Arc;
@@ -89,6 +90,7 @@ pub(super) async fn start_worker<
         + ProofProvider<Block>
         + 'static,
     Client::Api: DomainCoreApi<Block, AccountId>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + BlockBuilder<Block>
         + sp_api::ApiExt<Block, StateBackend = StateBackendFor<Backend, Block>>,
     for<'b> &'b Client: BlockImport<

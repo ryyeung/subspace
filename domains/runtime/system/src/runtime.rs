@@ -595,6 +595,10 @@ impl_runtime_apis! {
         ) -> Option<Vec<u8>> {
             DomainTracker::storage_key_for_core_domain_state_root(domain_id, block_number)
         }
+
+        fn best_known_block_number(domain_id: DomainId) -> Option<BlockNumber> {
+            DomainTracker::best_known_block_number(domain_id)
+        }
     }
 
     impl sp_messenger::RelayerApi<Block, RelayerId, BlockNumber> for Runtime {

@@ -27,6 +27,7 @@ use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_slots::Slot;
 use sp_core::traits::SpawnEssentialNamed;
+use sp_domains::state_root_tracker::DomainTrackerApi;
 use sp_domains::transaction::PreValidationObjectApi;
 use sp_domains::{DomainId, ExecutorApi};
 use sp_messenger::RelayerApi;
@@ -252,6 +253,7 @@ where
         + SessionKeys<Block>
         + DomainCoreApi<Block, AccountId>
         + SystemDomainApi<Block, NumberFor<PBlock>, PBlock::Hash>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + TaggedTransactionQueue<Block>
         + AccountNonceApi<Block, AccountId, Nonce>
         + TransactionPaymentRuntimeApi<Block, Balance>

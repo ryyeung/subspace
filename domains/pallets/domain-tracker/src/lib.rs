@@ -211,5 +211,9 @@ mod pallet {
                 block_number,
             ))
         }
+
+        pub fn best_known_block_number(domain_id: DomainId) -> Option<T::BlockNumber> {
+            LatestDomainBlockNumber::<T>::get(domain_id)
+        }
     }
 }

@@ -57,5 +57,8 @@ sp_api::decl_runtime_apis! {
         /// as present on the system domain.
         /// Returns None if the block number is not confirmed yet.
         fn storage_key_for_core_domain_state_root(domain_id: DomainId, block_number: BlockNumber) -> Option<Vec<u8>>;
+
+        /// Returns the best known block number of the given domain.
+        fn best_known_block_number(domain_id: DomainId) -> Option<BlockNumber>;
     }
 }

@@ -11,11 +11,11 @@ use sp_api::{NumberFor, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_core::traits::CodeExecutor;
 use sp_domain_digests::AsPredigest;
-use sp_domains::state_root_tracker::StateRootUpdate;
+use sp_domains::state_root_tracker::DomainTrackerApi;
 use sp_domains::{DomainId, ExecutorApi};
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::generic::BlockId;
-use sp_runtime::traits::{Block as BlockT, HashFor, Header as HeaderT};
+use sp_runtime::traits::{Block as BlockT, HashFor};
 use sp_runtime::{Digest, DigestItem};
 use std::sync::Arc;
 use subspace_core_primitives::Randomness;
@@ -56,6 +56,7 @@ where
     Client:
         HeaderBackend<Block> + BlockBackend<Block> + AuxStore + ProvideRuntimeApi<Block> + 'static,
     Client::Api: DomainCoreApi<Block, AccountId>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + sp_block_builder::BlockBuilder<Block>
         + sp_api::ApiExt<Block, StateBackend = StateBackendFor<Backend, Block>>
         + SystemDomainApi<Block, NumberFor<PBlock>, PBlock::Hash>,
@@ -150,26 +151,17 @@ where
         let (bundles, shuffling_seed, maybe_new_runtime) =
             preprocess_primary_block(DomainId::SYSTEM, &*self.primary_chain_client, primary_hash)?;
 
+        let system_domain_state_root = self
+            .domain_block_processor
+            .system_domain_state_root_updates_digest(parent_hash, &bundles)?;
+
+        let primary_block_info = DigestItem::primary_block_info((primary_number, primary_hash));
+
+        let digests = Digest {
+            logs: vec![system_domain_state_root, primary_block_info],
+        };
+
         let extrinsics = self.bundles_to_extrinsics(parent_hash, bundles, shuffling_seed)?;
-
-        let digests = self
-            .client
-            .header(parent_hash)?
-            .map(|header| {
-                let system_domain_state_root =
-                    DigestItem::system_domain_state_root_updates(vec![StateRootUpdate {
-                        number: parent_number,
-                        state_root: *header.state_root(),
-                    }]);
-
-                let primary_block_info =
-                    DigestItem::primary_block_info((primary_number, primary_hash));
-
-                Digest {
-                    logs: vec![system_domain_state_root, primary_block_info],
-                }
-            })
-            .unwrap_or_default();
 
         let domain_block_result = self
             .domain_block_processor

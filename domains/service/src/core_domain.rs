@@ -25,6 +25,7 @@ use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_slots::Slot;
 use sp_core::traits::SpawnEssentialNamed;
+use sp_domains::state_root_tracker::DomainTrackerApi;
 use sp_domains::{DomainId, ExecutorApi};
 use sp_messenger::RelayerApi;
 use sp_offchain::OffchainWorkerApi;
@@ -260,6 +261,7 @@ where
         + OffchainWorkerApi<Block>
         + SessionKeys<Block>
         + DomainCoreApi<Block, AccountId>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + TaggedTransactionQueue<Block>
         + AccountNonceApi<Block, AccountId, Nonce>
         + TransactionPaymentRuntimeApi<Block, Balance>

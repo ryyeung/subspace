@@ -10,13 +10,12 @@ use sc_consensus::{BlockImport, ForkChoiceStrategy};
 use sp_api::{NumberFor, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_core::traits::CodeExecutor;
-use sp_domain_digests::AsPredigest;
-use sp_domains::state_root_tracker::StateRootUpdate;
+use sp_domains::state_root_tracker::DomainTrackerApi;
 use sp_domains::{DomainId, ExecutorApi};
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::generic::BlockId;
-use sp_runtime::traits::{Block as BlockT, HashFor, Header as HeaderT};
-use sp_runtime::{Digest, DigestItem};
+use sp_runtime::traits::{Block as BlockT, HashFor};
+use sp_runtime::Digest;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use subspace_core_primitives::Randomness;
@@ -70,6 +69,7 @@ where
     Client:
         HeaderBackend<Block> + BlockBackend<Block> + AuxStore + ProvideRuntimeApi<Block> + 'static,
     Client::Api: DomainCoreApi<Block, AccountId>
+        + DomainTrackerApi<Block, NumberFor<Block>>
         + sp_block_builder::BlockBuilder<Block>
         + sp_api::ApiExt<Block, StateBackend = StateBackendFor<Backend, Block>>,
     for<'b> &'b Client: BlockImport<
@@ -179,22 +179,15 @@ where
         let (bundles, shuffling_seed, maybe_new_runtime) =
             preprocess_primary_block(self.domain_id, &*self.primary_chain_client, primary_hash)?;
 
+        let system_domain_state_root = self
+            .domain_block_processor
+            .system_domain_state_root_updates_digest(parent_hash, &bundles)?;
+
+        let digests = Digest {
+            logs: vec![system_domain_state_root],
+        };
+
         let extrinsics = self.bundles_to_extrinsics(parent_hash, bundles, shuffling_seed)?;
-
-        // include the latest state root of the system domain
-        let system_domain_hash = self.system_domain_client.info().best_hash;
-        let digests = self
-            .system_domain_client
-            .header(system_domain_hash)?
-            .map(|header| {
-                let item = DigestItem::system_domain_state_root_updates(vec![StateRootUpdate {
-                    number: *header.number(),
-                    state_root: *header.state_root(),
-                }]);
-
-                Digest { logs: vec![item] }
-            })
-            .unwrap_or_default();
 
         let domain_block_result = self
             .domain_block_processor

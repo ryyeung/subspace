@@ -140,10 +140,10 @@ async fn fraud_proof_verification_in_tx_pool_should_work() {
 
     let digest = {
         let system_domain_state_root =
-            DigestItem::system_domain_state_root_update(StateRootUpdate {
+            DigestItem::system_domain_state_root_updates(vec![StateRootUpdate {
                 number: 0,
                 state_root: *parent_header.state_root(),
-            });
+            }]);
 
         let primary_block_info =
             DigestItem::primary_block_info((1, ferdie.client.hash(1).unwrap().unwrap()));
