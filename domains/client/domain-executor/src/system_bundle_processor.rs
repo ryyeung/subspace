@@ -157,10 +157,10 @@ where
             .header(parent_hash)?
             .map(|header| {
                 let system_domain_state_root =
-                    DigestItem::system_domain_state_root_update(StateRootUpdate {
+                    DigestItem::system_domain_state_root_updates(vec![StateRootUpdate {
                         number: parent_number,
                         state_root: *header.state_root(),
-                    });
+                    }]);
 
                 let primary_block_info =
                     DigestItem::primary_block_info((primary_number, primary_hash));
@@ -235,7 +235,7 @@ where
             DomainBundles::Core(_) => {
                 return Err(sp_blockchain::Error::Application(Box::from(
                     "System bundle processor can not process core bundles.",
-                )))
+                )));
             }
         };
 

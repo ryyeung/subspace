@@ -16,7 +16,7 @@ use sp_domains::{DomainId, ExecutorApi};
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, HashFor, Header as HeaderT};
-use sp_runtime::Digest;
+use sp_runtime::{Digest, DigestItem};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use subspace_core_primitives::Randomness;
@@ -187,10 +187,10 @@ where
             .system_domain_client
             .header(system_domain_hash)?
             .map(|header| {
-                let item = AsPredigest::system_domain_state_root_update(StateRootUpdate {
+                let item = DigestItem::system_domain_state_root_updates(vec![StateRootUpdate {
                     number: *header.number(),
                     state_root: *header.state_root(),
-                });
+                }]);
 
                 Digest { logs: vec![item] }
             })
@@ -258,7 +258,7 @@ where
             DomainBundles::System(..) => {
                 return Err(sp_blockchain::Error::Application(Box::from(
                     "Core bundle processor can not process system bundles.",
-                )))
+                )));
             }
             DomainBundles::Core(bundles) => bundles,
         };

@@ -2,7 +2,8 @@
 
 use codec::{Decode, Encode};
 use sp_domains::state_root_tracker::StateRootUpdate;
-use sp_runtime::{ConsensusEngineId, DigestItem};
+use sp_runtime::{sp_std, ConsensusEngineId, DigestItem};
+use sp_std::vec::Vec;
 
 const DOMAIN_ENGINE_ID: ConsensusEngineId = *b"DMN_";
 
@@ -10,14 +11,14 @@ const DOMAIN_REGISTRY_ENGINE_ID: ConsensusEngineId = *b"RGTR";
 
 /// Trait to provide simpler abstractions to create predigests for runtime.
 pub trait AsPredigest {
-    /// Returns state root update digest
-    fn as_system_domain_state_root_update<Number: Decode, StateRoot: Decode>(
+    /// Returns state root updates form the digest.
+    fn as_system_domain_state_root_updates<Number: Decode, StateRoot: Decode>(
         &self,
-    ) -> Option<StateRootUpdate<Number, StateRoot>>;
+    ) -> Option<Vec<StateRootUpdate<Number, StateRoot>>>;
 
-    /// Creates a new digest from state root update for system domain.
-    fn system_domain_state_root_update<Number: Encode, StateRoot: Encode>(
-        update: StateRootUpdate<Number, StateRoot>,
+    /// Creates a new digest from state root updates for system domain.
+    fn system_domain_state_root_updates<Number: Encode, StateRoot: Encode>(
+        updates: Vec<StateRootUpdate<Number, StateRoot>>,
     ) -> Self;
 
     /// Returna a pair of (primary_block_number, primary_block_hash).
@@ -28,16 +29,16 @@ pub trait AsPredigest {
 }
 
 impl AsPredigest for DigestItem {
-    fn as_system_domain_state_root_update<Number: Decode, StateRoot: Decode>(
+    fn as_system_domain_state_root_updates<Number: Decode, StateRoot: Decode>(
         &self,
-    ) -> Option<StateRootUpdate<Number, StateRoot>> {
+    ) -> Option<Vec<StateRootUpdate<Number, StateRoot>>> {
         self.pre_runtime_try_to(&DOMAIN_ENGINE_ID)
     }
 
-    fn system_domain_state_root_update<Number: Encode, StateRoot: Encode>(
-        update: StateRootUpdate<Number, StateRoot>,
+    fn system_domain_state_root_updates<Number: Encode, StateRoot: Encode>(
+        updates: Vec<StateRootUpdate<Number, StateRoot>>,
     ) -> Self {
-        DigestItem::PreRuntime(DOMAIN_ENGINE_ID, update.encode())
+        DigestItem::PreRuntime(DOMAIN_ENGINE_ID, updates.encode())
     }
 
     /// Returna a pair of (primary_block_number, primary_block_hash).

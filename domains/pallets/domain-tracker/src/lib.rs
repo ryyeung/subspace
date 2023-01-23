@@ -55,7 +55,7 @@ mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -99,17 +99,16 @@ mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
-            if let Some(state_root_update) = <frame_system::Pallet<T>>::digest()
+            if let Some(state_root_updates) = <frame_system::Pallet<T>>::digest()
                 .logs
                 .iter()
                 .find_map(|s| {
-                    s.as_system_domain_state_root_update::<T::BlockNumber, StateRootOf<T>>()
+                    s.as_system_domain_state_root_updates::<T::BlockNumber, StateRootOf<T>>()
                 })
             {
-                Self::add_system_domain_state_root(
-                    state_root_update.number,
-                    state_root_update.state_root,
-                );
+                state_root_updates.into_iter().for_each(|update| {
+                    Self::add_system_domain_state_root(update.number, update.state_root);
+                })
             }
 
             Weight::zero()
