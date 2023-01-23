@@ -721,7 +721,7 @@ impl_runtime_apis! {
         fn extract_system_bundles(
             extrinsics: Vec<<Block as BlockT>::Extrinsic>,
         ) -> (
-            sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash>,
+            sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
             sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
         ) {
             crate::domains::extract_system_bundles(extrinsics)
@@ -730,7 +730,7 @@ impl_runtime_apis! {
         fn extract_core_bundles(
             extrinsics: Vec<<Block as BlockT>::Extrinsic>,
             domain_id: DomainId,
-        ) -> sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash> {
+        ) -> sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash> {
             crate::domains::extract_core_bundles(extrinsics, domain_id)
         }
 

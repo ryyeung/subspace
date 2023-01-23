@@ -501,6 +501,7 @@ impl pallet_rewards::Config for Runtime {
 
 /// Polkadot-like chain.
 struct PolkadotLike;
+
 impl Chain for PolkadotLike {
     type BlockNumber = u32;
     type Hash = <BlakeTwo256 as Hasher>::Out;
@@ -510,6 +511,7 @@ impl Chain for PolkadotLike {
 
 /// Type used to represent a FeedId or ChainId
 pub type FeedId = u64;
+
 pub struct GrandpaValidator<C>(PhantomData<C>);
 
 impl<C: Chain> FeedProcessor<FeedId> for GrandpaValidator<C> {
@@ -832,7 +834,7 @@ fn extract_block_object_mapping(block: Block, successful_calls: Vec<Hash>) -> Bl
 fn extract_system_bundles(
     extrinsics: Vec<UncheckedExtrinsic>,
 ) -> (
-    sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash>,
+    sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
     sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
 ) {
     let (system_bundles, core_bundles): (Vec<_>, Vec<_>) = extrinsics
@@ -843,7 +845,7 @@ fn extract_system_bundles(
             }) = uxt.function
             {
                 if signed_opaque_bundle.domain_id().is_system() {
-                    Some((Some(signed_opaque_bundle.bundle), None))
+                    Some((Some(signed_opaque_bundle), None))
                 } else {
                     Some((None, Some(signed_opaque_bundle)))
                 }
@@ -861,15 +863,13 @@ fn extract_system_bundles(
 fn extract_core_bundles(
     extrinsics: Vec<UncheckedExtrinsic>,
     domain_id: DomainId,
-) -> sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash> {
+) -> sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash> {
     extrinsics
         .into_iter()
         .filter_map(|uxt| match uxt.function {
             RuntimeCall::Domains(pallet_domains::Call::submit_bundle {
                 signed_opaque_bundle,
-            }) if signed_opaque_bundle.domain_id() == domain_id => {
-                Some(signed_opaque_bundle.bundle)
-            }
+            }) if signed_opaque_bundle.domain_id() == domain_id => Some(signed_opaque_bundle),
             _ => None,
         })
         .collect()
@@ -1150,7 +1150,7 @@ impl_runtime_apis! {
         fn extract_system_bundles(
             extrinsics: Vec<<Block as BlockT>::Extrinsic>,
         ) -> (
-            sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash>,
+            sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
             sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
         ) {
             extract_system_bundles(extrinsics)
@@ -1159,7 +1159,7 @@ impl_runtime_apis! {
         fn extract_core_bundles(
             extrinsics: Vec<<Block as BlockT>::Extrinsic>,
             domain_id: DomainId,
-        ) -> sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash> {
+        ) -> sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash> {
             extract_core_bundles(extrinsics, domain_id)
         }
 

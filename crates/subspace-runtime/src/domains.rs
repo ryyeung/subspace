@@ -12,7 +12,7 @@ use subspace_verification::derive_randomness;
 pub(crate) fn extract_system_bundles(
     extrinsics: Vec<UncheckedExtrinsic>,
 ) -> (
-    sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash>,
+    sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
     sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash>,
 ) {
     let (system_bundles, core_bundles): (Vec<_>, Vec<_>) = extrinsics
@@ -23,7 +23,7 @@ pub(crate) fn extract_system_bundles(
             }) = uxt.function
             {
                 if signed_opaque_bundle.domain_id().is_system() {
-                    Some((Some(signed_opaque_bundle.bundle), None))
+                    Some((Some(signed_opaque_bundle), None))
                 } else {
                     Some((None, Some(signed_opaque_bundle)))
                 }
@@ -41,15 +41,13 @@ pub(crate) fn extract_system_bundles(
 pub(crate) fn extract_core_bundles(
     extrinsics: Vec<UncheckedExtrinsic>,
     domain_id: DomainId,
-) -> sp_domains::OpaqueBundles<Block, domain_runtime_primitives::Hash> {
+) -> sp_domains::SignedOpaqueBundles<Block, domain_runtime_primitives::Hash> {
     extrinsics
         .into_iter()
         .filter_map(|uxt| match uxt.function {
             RuntimeCall::Domains(pallet_domains::Call::submit_bundle {
                 signed_opaque_bundle,
-            }) if signed_opaque_bundle.domain_id() == domain_id => {
-                Some(signed_opaque_bundle.bundle)
-            }
+            }) if signed_opaque_bundle.domain_id() == domain_id => Some(signed_opaque_bundle),
             _ => None,
         })
         .collect()

@@ -239,9 +239,12 @@ where
             }
         };
 
-        let origin_system_extrinsics = self
-            .domain_block_processor
-            .compile_own_domain_bundles(system_bundles);
+        let origin_system_extrinsics = self.domain_block_processor.compile_own_domain_bundles(
+            system_bundles
+                .into_iter()
+                .map(|signed_bundle| signed_bundle.bundle)
+                .collect(),
+        );
         let extrinsics = self
             .client
             .runtime_api()

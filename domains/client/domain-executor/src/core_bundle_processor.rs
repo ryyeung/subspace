@@ -262,9 +262,12 @@ where
             }
             DomainBundles::Core(bundles) => bundles,
         };
-        let extrinsics = self
-            .domain_block_processor
-            .compile_own_domain_bundles(bundles);
+        let extrinsics = self.domain_block_processor.compile_own_domain_bundles(
+            bundles
+                .into_iter()
+                .map(|signed_bundle| signed_bundle.bundle)
+                .collect(),
+        );
         self.domain_block_processor
             .deduplicate_and_shuffle_extrinsics(parent_hash, extrinsics, shuffling_seed)
     }

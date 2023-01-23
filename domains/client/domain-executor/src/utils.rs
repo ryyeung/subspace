@@ -5,7 +5,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use sc_consensus::ForkChoiceStrategy;
 use sp_consensus_slots::Slot;
-use sp_domains::{OpaqueBundles, SignedOpaqueBundles};
+use sp_domains::SignedOpaqueBundles;
 use sp_runtime::traits::{Block as BlockT, NumberFor};
 use std::collections::{BTreeMap, VecDeque};
 use std::convert::TryInto;
@@ -18,10 +18,10 @@ where
     PBlock: BlockT,
 {
     System(
-        OpaqueBundles<PBlock, Block::Hash>,
+        SignedOpaqueBundles<PBlock, Block::Hash>,
         SignedOpaqueBundles<PBlock, Block::Hash>,
     ),
-    Core(OpaqueBundles<PBlock, Block::Hash>),
+    Core(SignedOpaqueBundles<PBlock, Block::Hash>),
 }
 
 /// Data required to produce bundles on executor node.
