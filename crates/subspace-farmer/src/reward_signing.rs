@@ -35,7 +35,7 @@ where
                 .await
             {
                 Ok(_) => {
-                    info!("Successfully signed reward hash 0x{}", hex::encode(hash));
+                    //info!("Successfully signed reward hash 0x{}", hex::encode(hash));
                 }
                 Err(error) => {
                     warn!(

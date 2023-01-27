@@ -34,7 +34,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Weak;
 use std::time::Duration;
 use tokio::time::Sleep;
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 /// How many peers should node be connected to before boosting turns on.
 ///
@@ -310,6 +310,7 @@ where
                 self.handle_kademlia_event(event).await;
             }
             SwarmEvent::Behaviour(Event::Gossipsub(event)) => {
+                info!("xxx: handle_swarm_event():  Gossipsub = {:?}", event);
                 self.handle_gossipsub_event(event).await;
             }
             SwarmEvent::Behaviour(Event::RequestResponse(event)) => {
@@ -339,7 +340,7 @@ where
                 };
 
                 let is_reserved_peer = self.reserved_peers.contains_key(&peer_id);
-                debug!(%peer_id, %is_reserved_peer, "Connection established [{num_established} from peer]");
+                info!(%peer_id, %is_reserved_peer, "Connection established [{num_established} from peer]");
 
                 if shared.connected_peers_count.fetch_add(1, Ordering::SeqCst)
                     >= CONCURRENT_TASKS_BOOST_PEERS_THRESHOLD.get()
@@ -409,7 +410,7 @@ where
                         return;
                     }
                 };
-                debug!("Connection closed with peer {peer_id} [{num_established} from peer]");
+                info!("Connection closed with peer {peer_id} [{num_established} from peer]");
 
                 if shared.connected_peers_count.fetch_sub(1, Ordering::SeqCst)
                     > CONCURRENT_TASKS_BOOST_PEERS_THRESHOLD.get()
