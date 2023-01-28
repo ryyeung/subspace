@@ -300,6 +300,9 @@ where
     /// The purpose is to use our custom [`Executive::initialize_block`] and
     /// [`Executive::apply_extrinsic`].
     pub fn execute_block(block: Block) {
+        sp_std::if_std! {
+            println!("xxx: Executive::execute_block()");
+        }
         sp_io::init_tracing();
         sp_tracing::within_span! {
             sp_tracing::info_span!("execute_block", ?block);
@@ -347,6 +350,9 @@ where
 
     /// Wrapped `frame_executive::Executive::finalize_block`.
     pub fn finalize_block() -> System::Header {
+        sp_std::if_std! {
+            println!("xxx: Executive::finalize_block()");
+        }
         Pallet::<ExecutiveConfig>::push_root(Self::storage_root());
         frame_executive::Executive::<
             System,
@@ -448,6 +454,9 @@ where
         uxt: Block::Extrinsic,
         block_hash: Block::Hash,
     ) -> TransactionValidity {
+        sp_std::if_std! {
+            println!("xxx: Executive::validate_transaction()");
+        }
         frame_executive::Executive::<
             System,
             Block,

@@ -554,10 +554,16 @@ impl_runtime_apis! {
         }
 
         fn execute_block(block: Block) {
+            sp_std::if_std! {
+                println!("xxx: sp_api::Core<Block>::execute_block()");
+            }
             Executive::execute_block(block);
         }
 
         fn initialize_block(header: &<Block as BlockT>::Header) {
+            sp_std::if_std! {
+                println!("xxx: sp_api::Core<Block>::initialize_block()");
+            }
             Executive::initialize_block(header)
         }
     }
@@ -570,14 +576,23 @@ impl_runtime_apis! {
 
     impl sp_block_builder::BlockBuilder<Block> for Runtime {
         fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
+            sp_std::if_std! {
+                println!("xxx: sp_block_builder::BlockBuilder::apply_extrinsic()");
+            }
             Executive::apply_extrinsic(extrinsic)
         }
 
         fn finalize_block() -> <Block as BlockT>::Header {
+            sp_std::if_std! {
+                println!("xxx: sp_block_builder::BlockBuilder::finalize_block()");
+            }
             Executive::finalize_block()
         }
 
         fn inherent_extrinsics(data: sp_inherents::InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
+            sp_std::if_std! {
+                println!("xxx: sp_block_builder::BlockBuilder::inherent_extrinsics()");
+            }
             data.create_extrinsics()
         }
 
@@ -585,6 +600,9 @@ impl_runtime_apis! {
             block: Block,
             data: sp_inherents::InherentData,
         ) -> sp_inherents::CheckInherentsResult {
+            sp_std::if_std! {
+                println!("xxx: sp_block_builder::BlockBuilder::check_inherents()");
+            }
             data.check_extrinsics(&block)
         }
     }
@@ -595,6 +613,9 @@ impl_runtime_apis! {
             tx: <Block as BlockT>::Extrinsic,
             block_hash: <Block as BlockT>::Hash,
         ) -> TransactionValidity {
+            sp_std::if_std! {
+                println!("xxx: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>::validate_transaction()");
+            }
             Executive::validate_transaction(source, tx, block_hash)
         }
     }
