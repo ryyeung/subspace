@@ -612,16 +612,15 @@ where
         ),
         String,
     > {
-        trace!(
+        let hash = block.header.hash();
+        warn!(
             target: "subspace",
-            "Verifying origin: {:?} header: {:?} justification(s): {:?} body: {:?}",
+            "xxx: SubspaceVerifier::verify(): origin: {:?} justification(s): {:?} body: {:?}, logs: {:?}",
             block.origin,
-            block.header,
             block.justifications,
             block.body,
+            block.header.digest().logs().len(),
         );
-
-        let hash = block.header.hash();
 
         debug!(target: "subspace", "We have {:?} logs in this header", block.header.digest().logs().len());
 
@@ -1036,6 +1035,10 @@ where
     ) -> Result<ImportResult, Self::Error> {
         let block_hash = block.post_hash();
         let block_number = *block.header.number();
+        warn!(
+            "xxx: BlockImport::import_block(): {:?}, {:?}",
+            block_hash, block_number
+        );
 
         // Early exit if block already in chain
         match self.client.status(block_hash) {
@@ -1190,7 +1193,9 @@ where
         &mut self,
         block: BlockCheckParams<Block>,
     ) -> Result<ImportResult, Self::Error> {
-        self.inner.check_block(block).await.map_err(Into::into)
+        let ret = self.inner.check_block(block).await.map_err(Into::into);
+        warn!("xxx: BlockImport::check_block(): {:?}", ret);
+        ret
     }
 }
 
