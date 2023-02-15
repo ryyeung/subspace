@@ -555,14 +555,14 @@ impl_runtime_apis! {
 
         fn execute_block(block: Block) {
             sp_std::if_std! {
-                println!("xxx: sp_api::Core<Block>::execute_block()");
+                println!("xxx: sp_api::Core<Block>::execute_block(): hash = {:?}", block.hash());
             }
             Executive::execute_block(block);
         }
 
         fn initialize_block(header: &<Block as BlockT>::Header) {
             sp_std::if_std! {
-                println!("xxx: sp_api::Core<Block>::initialize_block()");
+                println!("xxx: sp_api::Core<Block>::initialize_block(): hdr.hash = {:?}", header.hash());
             }
             Executive::initialize_block(header)
         }
@@ -577,7 +577,7 @@ impl_runtime_apis! {
     impl sp_block_builder::BlockBuilder<Block> for Runtime {
         fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
             sp_std::if_std! {
-                println!("xxx: sp_block_builder::BlockBuilder::apply_extrinsic()");
+                //println!("xxx: sp_block_builder::BlockBuilder::apply_extrinsic()");
             }
             Executive::apply_extrinsic(extrinsic)
         }
@@ -591,7 +591,7 @@ impl_runtime_apis! {
 
         fn inherent_extrinsics(data: sp_inherents::InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
             sp_std::if_std! {
-                println!("xxx: sp_block_builder::BlockBuilder::inherent_extrinsics()");
+                //println!("xxx: sp_block_builder::BlockBuilder::inherent_extrinsics()");
             }
             data.create_extrinsics()
         }
@@ -601,7 +601,7 @@ impl_runtime_apis! {
             data: sp_inherents::InherentData,
         ) -> sp_inherents::CheckInherentsResult {
             sp_std::if_std! {
-                println!("xxx: sp_block_builder::BlockBuilder::check_inherents()");
+                println!("xxx: sp_block_builder::BlockBuilder::check_inherents(): hash = {:?}", block.hash());
             }
             data.check_extrinsics(&block)
         }
@@ -614,7 +614,8 @@ impl_runtime_apis! {
             block_hash: <Block as BlockT>::Hash,
         ) -> TransactionValidity {
             sp_std::if_std! {
-                println!("xxx: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>::validate_transaction()");
+                println!("xxx: runtime_api::TaggedTransactionQueue<Block>::validate_transaction(): \
+                           source = {:?}, block_hash = {:?}", source, block_hash);
             }
             Executive::validate_transaction(source, tx, block_hash)
         }

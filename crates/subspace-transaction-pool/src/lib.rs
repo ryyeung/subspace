@@ -159,6 +159,9 @@ where
         source: TransactionSource,
         uxt: ExtrinsicFor<Self>,
     ) -> Self::ValidationFuture {
+        tracing::warn!(
+            "xxx: FullChainApiWrapper::validate_transaction(): at = {:?}, source = {:?}",
+            at, source);
         match self
             .client
             .runtime_api()
@@ -383,6 +386,9 @@ where
         source: TransactionSource,
         xts: Vec<TransactionFor<Self>>,
     ) -> PoolFuture<Vec<Result<TxHash<Self>, Self::Error>>, Self::Error> {
+        tracing::warn!(
+            "xxx: BasicPoolWrapper::submit_at(): at = {:?}, source = {:?}, xts len = {}",
+            at, source, xts.len());
         self.inner.submit_at(at, source, xts)
     }
 
@@ -392,7 +398,15 @@ where
         source: TransactionSource,
         xt: TransactionFor<Self>,
     ) -> PoolFuture<TxHash<Self>, Self::Error> {
-        self.inner.submit_one(at, source, xt)
+        let tx_hash = self.hash_of(&xt);
+        tracing::warn!(
+            "xxx: BasicPoolWrapper::submit_one(): at = {:?}, source = {:?}, tx_hash = {:?}, before ...",
+            at, source, tx_hash);
+        let ret = self.inner.submit_one(at, source, xt);
+        tracing::warn!(
+            "xxx: BasicPoolWrapper::submit_one(): at = {:?}, source = {:?}, tx_hash = {:?}, after",
+            at, source, tx_hash);
+        ret
     }
 
     fn submit_and_watch(
@@ -401,6 +415,9 @@ where
         source: TransactionSource,
         xt: TransactionFor<Self>,
     ) -> PoolFuture<Pin<Box<TransactionStatusStreamFor<Self>>>, Self::Error> {
+        tracing::warn!(
+            "xxx: BasicPoolWrapper::submit_and_watch(): at = {:?}, source = {:?}, tx_hash = {:?}",
+            at, source, self.hash_of(&xt));
         self.inner.submit_and_watch(at, source, xt)
     }
 
@@ -421,6 +438,9 @@ where
     }
 
     fn on_broadcasted(&self, propagations: HashMap<TxHash<Self>, Vec<String>>) {
+        tracing::warn!(
+            "xxx: BasicPoolWrapper::on_broadcasted(): propagations len = {:?}",
+            propagations.len());
         self.inner.on_broadcasted(propagations)
     }
 

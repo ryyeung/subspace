@@ -455,7 +455,8 @@ where
         block_hash: Block::Hash,
     ) -> TransactionValidity {
         sp_std::if_std! {
-            println!("xxx: Executive::validate_transaction()");
+            println!("xxx: Executive::validate_transaction(): source = {:?}, block_hash = {:?}",
+                source, block_hash);
         }
         frame_executive::Executive::<
             System,

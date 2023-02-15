@@ -615,10 +615,10 @@ where
         let hash = block.header.hash();
         warn!(
             target: "subspace",
-            "xxx: SubspaceVerifier::verify(): origin: {:?} justification(s): {:?} body: {:?}, logs: {:?}",
+            "xxx: SubspaceVerifier::verify(): hash = {:?}, origin: {:?} justification(s): {:?}, logs: {:?}",
+	    hash,
             block.origin,
             block.justifications,
-            block.body,
             block.header.digest().logs().len(),
         );
 
