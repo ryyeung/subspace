@@ -607,7 +607,6 @@ fn main() -> Result<(), Error> {
                                 )));
                             }
                         };
-
                         domain_tx_pool_sinks
                             .insert(core_domain_cli.domain_id, core_domain_node.tx_pool_sink);
                         primary_chain_node
