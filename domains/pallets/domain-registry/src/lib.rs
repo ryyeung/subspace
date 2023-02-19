@@ -133,6 +133,11 @@ mod pallet {
     pub(super) type Domains<T: Config> =
         StorageMap<_, Twox64Concat, DomainId, DomainConfig<T>, OptionQuery>;
 
+    /// At which block the domain was created.
+    #[pallet::storage]
+    pub(super) type CreatedAt<T: Config> =
+        StorageMap<_, Twox64Concat, DomainId, T::BlockNumber, ValueQuery>;
+
     /// (executor, domain_id, allocated_stake_proportion)
     #[pallet::storage]
     pub(super) type DomainOperators<T: Config> = StorageDoubleMap<
@@ -752,6 +757,7 @@ impl<T: Config> Pallet<T> {
             return Err(Error::<T>::NotCoreDomainBundle);
         }
 
+        let created_at = CreatedAt::<T>::get(domain_id);
         let head_receipt_number = Self::head_receipt_number(domain_id);
         let max_allowed = head_receipt_number + T::MaximumReceiptDrift::get();
 
@@ -777,7 +783,9 @@ impl<T: Config> Pallet<T> {
             }
 
             let primary_number = receipt.primary_number;
-            if !pallet_receipts::Pallet::<T>::point_to_valid_primary_block(domain_id, receipt) {
+            if primary_number > created_at
+                && !pallet_receipts::Pallet::<T>::point_to_valid_primary_block(domain_id, receipt)
+            {
                 log::error!(
                     target: "runtime::domain-registry",
                     "Receipt of {domain_id:?} #{primary_number:?},{:?} points to an unknown primary block, \
@@ -957,6 +965,9 @@ impl<T: Config> Pallet<T> {
         Domains::<T>::insert(domain_id, domain_config);
         DomainCreators::<T>::insert(domain_id, who, deposit);
         NextDomainId::<T>::put(domain_id + 1);
+
+        let current_block_number = frame_system::Pallet::<T>::block_number();
+        CreatedAt::<T>::insert(domain_id, current_block_number);
 
         domain_id
     }
