@@ -17,7 +17,7 @@
 //! Core payments domain configurations.
 
 use crate::chain_spec_utils::{chain_spec_properties, get_account_id_from_seed};
-use core_payments_domain_runtime::{
+use core_eth_relay_domain_runtime::{
     AccountId, BalancesConfig, GenesisConfig, MessengerConfig, SudoConfig, SystemConfig,
     WASM_BINARY,
 };
@@ -34,7 +34,7 @@ pub fn development_config() -> ExecutionChainSpec<GenesisConfig> {
         // Name
         "Development",
         // ID
-        "core_payments_domain_dev",
+        "core_eth_relay_domain_dev",
         ChainType::Development,
         move || {
             testnet_genesis(
@@ -65,7 +65,7 @@ pub fn local_testnet_config() -> ExecutionChainSpec<GenesisConfig> {
         // Name
         "Local Testnet",
         // ID
-        "core_payments_domain_local_testnet",
+        "core_eth_relay_domain_local_testnet",
         ChainType::Local,
         move || {
             testnet_genesis(
@@ -115,7 +115,7 @@ pub fn gemini_3c_config() -> ExecutionChainSpec<GenesisConfig> {
         // Name
         "Subspace Gemini 3c Core Payments Domain",
         // ID
-        "subspace_gemini_3c_core_payments_domain",
+        "subspace_gemini_3c_core_eth_relay_domain",
         ChainType::Local,
         move || {
             let sudo_account =
@@ -152,7 +152,7 @@ pub fn devnet_config() -> ExecutionChainSpec<GenesisConfig> {
         // Name
         "Subspace Devnet Core Payments Domain",
         // ID
-        "subspace_devnet_core_payments_domain",
+        "subspace_devnet_core_eth_relay_domain",
         ChainType::Custom("Testnet".to_string()),
         move || {
             let sudo_account =

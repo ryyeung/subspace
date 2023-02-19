@@ -241,12 +241,12 @@ parameter_types! {
 parameter_types! {
     pub const MaximumRelayers: u32 = 100;
     pub const RelayerDeposit: Balance = 100 * SSC;
-    pub const CorePaymentsDomainId: DomainId = DomainId::CORE_PAYMENTS;
+    pub const CoreEthRelayDomainId: DomainId = DomainId::CORE_ETH_RELAY;
 }
 
 impl pallet_messenger::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type SelfDomainId = CorePaymentsDomainId;
+    type SelfDomainId = CoreEthRelayDomainId;
 
     fn get_endpoint_response_handler(
         endpoint: &Endpoint,
@@ -277,7 +277,7 @@ parameter_types! {
 
 impl pallet_transporter::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type SelfDomainId = CorePaymentsDomainId;
+    type SelfDomainId = CoreEthRelayDomainId;
     type SelfEndpointId = TransporterEndpointId;
     type Currency = Balances;
     type Sender = Messenger;
@@ -442,7 +442,7 @@ impl_runtime_apis! {
 
     impl sp_messenger::RelayerApi<Block, RelayerId, BlockNumber> for Runtime {
         fn domain_id() -> DomainId {
-            CorePaymentsDomainId::get()
+            CoreEthRelayDomainId::get()
         }
 
         fn relay_confirmation_depth() -> BlockNumber {
