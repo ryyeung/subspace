@@ -72,6 +72,24 @@ impl NativeExecutionDispatch for CorePaymentsDomainExecutorDispatch {
     }
 }
 
+/// Core payments domain executor instance.
+pub struct CoreEthRelayDomainExecutorDispatch;
+
+impl NativeExecutionDispatch for CoreEthRelayDomainExecutorDispatch {
+    #[cfg(feature = "runtime-benchmarks")]
+    type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+    #[cfg(not(feature = "runtime-benchmarks"))]
+    type ExtendHostFunctions = ();
+
+    fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+        core_eth_relay_domain_runtime::api::dispatch(method, data)
+    }
+
+    fn native_version() -> sc_executor::NativeVersion {
+        core_eth_relay_domain_runtime::native_version()
+    }
+}
+
 /// Subspace node error.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -572,9 +590,9 @@ fn main() -> Result<(), Error> {
                                 ))
                             })?;
 
-                        let core_domain_node = match core_domain_cli.domain_id {
+                        match core_domain_cli.domain_id {
                             DomainId::CORE_PAYMENTS => {
-                                domain_service::new_full_core::<
+                                let core_domain_node = domain_service::new_full_core::<
                                     _,
                                     _,
                                     _,
@@ -597,7 +615,53 @@ fn main() -> Result<(), Error> {
                                     block_import_throttling_buffer_size,
                                     gossip_msg_sink,
                                 )
-                                .await?
+                                .await?;
+
+                                domain_tx_pool_sinks.insert(
+                                    core_domain_cli.domain_id,
+                                    core_domain_node.tx_pool_sink,
+                                );
+                                primary_chain_node
+                                    .task_manager
+                                    .add_child(core_domain_node.task_manager);
+
+                                core_domain_node.network_starter.start_network();
+                            }
+                            DomainId::CORE_ETH_RELAY => {
+                                let core_domain_node = domain_service::new_full_core::<
+                                    _,
+                                    _,
+                                    _,
+                                    _,
+                                    _,
+                                    _,
+                                    _,
+                                    core_eth_relay_domain_runtime::RuntimeApi,
+                                    CoreEthRelayDomainExecutorDispatch,
+                                >(
+                                    core_domain_cli.domain_id,
+                                    core_domain_config,
+                                    system_domain_node.client.clone(),
+                                    system_domain_node.network.clone(),
+                                    primary_chain_node.client.clone(),
+                                    primary_chain_node.network.clone(),
+                                    &primary_chain_node.select_chain,
+                                    imported_block_notification_stream(),
+                                    new_slot_notification_stream(),
+                                    block_import_throttling_buffer_size,
+                                    gossip_msg_sink,
+                                )
+                                .await?;
+
+                                domain_tx_pool_sinks.insert(
+                                    core_domain_cli.domain_id,
+                                    core_domain_node.tx_pool_sink,
+                                );
+                                primary_chain_node
+                                    .task_manager
+                                    .add_child(core_domain_node.task_manager);
+
+                                core_domain_node.network_starter.start_network();
                             }
                             _ => {
                                 return Err(Error::Other(format!(
@@ -606,14 +670,7 @@ fn main() -> Result<(), Error> {
                                     u32::from(DomainId::CORE_PAYMENTS)
                                 )));
                             }
-                        };
-                        domain_tx_pool_sinks
-                            .insert(core_domain_cli.domain_id, core_domain_node.tx_pool_sink);
-                        primary_chain_node
-                            .task_manager
-                            .add_child(core_domain_node.task_manager);
-
-                        core_domain_node.network_starter.start_network();
+                        }
                     }
 
                     let cross_domain_message_gossip_worker = GossipWorker::<Block>::new(

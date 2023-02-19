@@ -69,6 +69,11 @@ where
                     .map_err(|err| sp_blockchain::Error::Application(Box::new(err)))?
                     .into()
             }
+            DomainId::CORE_ETH_RELAY => {
+                read_core_domain_runtime_blob(system_domain_runtime.as_ref(), domain_id)
+                    .map_err(|err| sp_blockchain::Error::Application(Box::new(err)))?
+                    .into()
+            }
             _ => {
                 return Err(sp_blockchain::Error::Application(Box::from(format!(
                     "No new runtime code for {domain_id:?}"
