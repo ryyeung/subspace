@@ -458,6 +458,8 @@ mod pallet {
         TooFarInFuture,
         /// Core domain receipt points to an unknown primary block.
         UnknownBlock,
+        /// Valid receipts start after the domain creation.
+        BeforeDomainCreation,
     }
 
     impl<T> From<PalletReceiptError> for Error<T> {
@@ -783,6 +785,15 @@ impl<T: Config> Pallet<T> {
             }
 
             let primary_number = receipt.primary_number;
+
+            if primary_number <= created_at {
+                log::error!(
+                    target: "runtime::domain-registry",
+                    "Domain was created at #{created_at:?}, but this receipt points to an earlier block #{:?}", receipt.primary_number,
+                );
+                return Err(Error::<T>::Receipt(ReceiptError::BeforeDomainCreation));
+            }
+
             if primary_number > created_at
                 && !pallet_receipts::Pallet::<T>::point_to_valid_primary_block(domain_id, receipt)
             {
@@ -968,6 +979,10 @@ impl<T: Config> Pallet<T> {
 
         let current_block_number = frame_system::Pallet::<T>::block_number();
         CreatedAt::<T>::insert(domain_id, current_block_number);
+        pallet_receipts::Pallet::<T>::initialize_head_receipt_number(
+            domain_id,
+            current_block_number,
+        );
 
         domain_id
     }

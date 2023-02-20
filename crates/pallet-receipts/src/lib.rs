@@ -207,6 +207,10 @@ impl<T: Config> Pallet<T> {
         <HeadReceiptNumber<T>>::get(domain_id)
     }
 
+    pub fn initialize_head_receipt_number(domain_id: DomainId, created_at: T::BlockNumber) {
+        <HeadReceiptNumber<T>>::insert(domain_id, created_at)
+    }
+
     /// Returns the block number of the oldest receipt still being tracked in the state.
     pub fn oldest_receipt_number(domain_id: DomainId) -> T::BlockNumber {
         Self::finalized_receipt_number(domain_id) + One::one()
