@@ -193,7 +193,6 @@ async fn execution_proof_creation_and_verification_should_work() {
 
     let proof_verifier = ProofVerifier::new(
         ferdie.client.clone(),
-        ferdie.backend.clone(),
         ferdie.executor.clone(),
         ferdie.task_manager.spawn_handle(),
     );
@@ -471,7 +470,6 @@ async fn invalid_execution_proof_should_not_work() {
 
     let proof_verifier = ProofVerifier::new(
         ferdie.client.clone(),
-        ferdie.backend.clone(),
         ferdie.executor.clone(),
         ferdie.task_manager.spawn_handle(),
     );

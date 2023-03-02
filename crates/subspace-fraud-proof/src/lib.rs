@@ -186,21 +186,19 @@ impl<'a> FetchRuntimeCode for RuntimCodeFetcher<'a> {
 }
 
 /// Fraud proof verifier.
-pub struct ProofVerifier<PBlock, C, B, Exec, Spawn, Hash> {
+pub struct ProofVerifier<PBlock, C, Exec, Spawn, Hash> {
     client: Arc<C>,
-    backend: Arc<B>,
     executor: Exec,
     spawn_handle: Spawn,
     _phantom: PhantomData<(PBlock, Hash)>,
 }
 
-impl<PBlock, C, B, Exec: Clone, Spawn: Clone, Hash> Clone
-    for ProofVerifier<PBlock, C, B, Exec, Spawn, Hash>
+impl<PBlock, C, Exec: Clone, Spawn: Clone, Hash> Clone
+    for ProofVerifier<PBlock, C, Exec, Spawn, Hash>
 {
     fn clone(&self) -> Self {
         Self {
             client: self.client.clone(),
-            backend: self.backend.clone(),
             executor: self.executor.clone(),
             spawn_handle: self.spawn_handle.clone(),
             _phantom: self._phantom,
@@ -208,21 +206,19 @@ impl<PBlock, C, B, Exec: Clone, Spawn: Clone, Hash> Clone
     }
 }
 
-impl<PBlock, C, B, Exec, Spawn, Hash> ProofVerifier<PBlock, C, B, Exec, Spawn, Hash>
+impl<PBlock, C, Exec, Spawn, Hash> ProofVerifier<PBlock, C, Exec, Spawn, Hash>
 where
     PBlock: BlockT,
     C: ProvideRuntimeApi<PBlock> + Send + Sync,
     C::Api: ExecutorApi<PBlock, Hash>,
-    B: backend::Backend<PBlock>,
     Exec: CodeExecutor + Clone + 'static,
     Spawn: SpawnNamed + Clone + Send + 'static,
     Hash: Encode + Decode,
 {
     /// Constructs a new instance of [`ProofVerifier`].
-    pub fn new(client: Arc<C>, backend: Arc<B>, executor: Exec, spawn_handle: Spawn) -> Self {
+    pub fn new(client: Arc<C>, executor: Exec, spawn_handle: Spawn) -> Self {
         Self {
             client,
-            backend,
             executor,
             spawn_handle,
             _phantom: PhantomData::<(PBlock, Hash)>,
@@ -312,13 +308,11 @@ pub trait VerifyFraudProof {
     fn verify_fraud_proof(&self, proof: &FraudProof) -> Result<(), VerificationError>;
 }
 
-impl<PBlock, C, B, Exec, Spawn, Hash> VerifyFraudProof
-    for ProofVerifier<PBlock, C, B, Exec, Spawn, Hash>
+impl<PBlock, C, Exec, Spawn, Hash> VerifyFraudProof for ProofVerifier<PBlock, C, Exec, Spawn, Hash>
 where
     PBlock: BlockT,
     C: ProvideRuntimeApi<PBlock> + Send + Sync,
     C::Api: ExecutorApi<PBlock, Hash>,
-    B: backend::Backend<PBlock>,
     Exec: CodeExecutor + Clone + 'static,
     Spawn: SpawnNamed + Clone + Send + 'static,
     Hash: Encode + Decode + Send + Sync,
