@@ -15,33 +15,33 @@ include = [
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-frame-system = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
+frame-system = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
 futures = "0.3.26"
 rand = "0.8.5"
-pallet-balances = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-pallet-transaction-payment = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sc-client-api = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sc-consensus-slots = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sc-executor = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sc-network = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sc-network-common = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sc-service = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232", default-features = false }
-sc-tracing = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sp-arithmetic = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sp-blockchain = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sp-keyring = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-sp-runtime = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
+pallet-balances = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+pallet-transaction-payment = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sc-client-api = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sc-consensus-slots = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sc-executor = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sc-network = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sc-network-common = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sc-service = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a", default-features = false }
+sc-tracing = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sp-arithmetic = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sp-blockchain = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sp-keyring = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+sp-runtime = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
 subspace-networking = { path = "../../crates/subspace-networking" }
 subspace-runtime-primitives = { path = "../../crates/subspace-runtime-primitives" }
 subspace-service = { path = "../../crates/subspace-service" }
 subspace-test-client = { path = "../subspace-test-client" }
 subspace-test-runtime = { version = "0.1.0", features = ["do-not-enforce-cost-of-storage"], path = "../subspace-test-runtime" }
 subspace-transaction-pool = { path = "../../crates/subspace-transaction-pool" }
-substrate-test-client = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
+substrate-test-client = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
 tokio = "1.25.0"
 
 [dev-dependencies]
-sc-cli = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232", default-features = false }
-sp-keyring = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
-substrate-test-utils = { git = "https://github.com/subspace/substrate", rev = "456cfad45a178617f6886ec400c312f2fea59232" }
+sc-cli = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a", default-features = false }
+sp-keyring = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
+substrate-test-utils = { git = "https://github.com/subspace/substrate", branch = "rsub/relay-bench-a" }
 tempfile = "3.4.0"
