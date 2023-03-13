@@ -342,6 +342,8 @@ async fn run_executor_with_mock(
 
 /// A Cumulus test node instance used for testing.
 pub struct SystemDomainNode {
+    /// Node's key
+    pub key: Sr25519Keyring,
     /// TaskManager's instance.
     pub task_manager: TaskManager,
     /// Client's instance.
@@ -488,6 +490,7 @@ impl SystemDomainNodeBuilder {
         let addr = MultiaddrWithPeerId { multiaddr, peer_id };
 
         SystemDomainNode {
+            key: self.key,
             task_manager,
             client,
             backend,
@@ -525,6 +528,7 @@ impl SystemDomainNodeBuilder {
         let addr = MultiaddrWithPeerId { multiaddr, peer_id };
 
         SystemDomainNode {
+            key: self.key,
             task_manager,
             client,
             backend,
