@@ -11,6 +11,7 @@ use sp_blockchain::HeaderBackend;
 use sp_consensus_slots::Slot;
 use sp_domains::{Bundle, BundleHeader};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Hash as HashT, One, Zero};
+use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time;
@@ -161,29 +162,36 @@ where
 
         let header_number = to_number_primitive(header_number);
 
-        // Ideally, the receipt of current block will be included in the next block, i.e., no
-        // missing receipts.
-        let receipts = if header_number == head_receipt_number + 1 {
-            let block_hash = self.client.hash(header_number.into())?.ok_or_else(|| {
-                sp_blockchain::Error::Backend(
-                    format!("Hash for Block {header_number:?} not found",),
-                )
-            })?;
-            vec![load_receipt(block_hash)?]
-        } else {
-            // Receipts for some previous blocks are missing.
-            let max_allowed = (head_receipt_number + max_drift).min(header_number);
-
-            let mut to_send = head_receipt_number + 1;
-            let mut receipts = Vec::with_capacity((max_allowed - to_send + 1) as usize);
-            while to_send <= max_allowed {
-                let block_hash = self.client.hash(to_send.into())?.ok_or_else(|| {
-                    sp_blockchain::Error::Backend(format!("Hash for Block {to_send:?} not found"))
+        let receipts = match header_number.cmp(&(head_receipt_number + 1)) {
+            // Ideally, the receipt of current block will be included in the next block, i.e., no
+            // missing receipts.
+            Ordering::Equal => {
+                let block_hash = self.client.hash(header_number.into())?.ok_or_else(|| {
+                    sp_blockchain::Error::Backend(format!(
+                        "Hash for Block {header_number:?} not found",
+                    ))
                 })?;
-                receipts.push(load_receipt(block_hash)?);
-                to_send += 1;
+                vec![load_receipt(block_hash)?]
             }
-            receipts
+            // Receipts for some previous blocks are missing.
+            Ordering::Greater => {
+                let max_allowed = (head_receipt_number + max_drift).min(header_number);
+                let mut to_send = head_receipt_number + 1;
+                let mut receipts = Vec::with_capacity((max_allowed + 1 - to_send) as usize);
+                while to_send <= max_allowed {
+                    let block_hash = self.client.hash(to_send.into())?.ok_or_else(|| {
+                        sp_blockchain::Error::Backend(format!(
+                            "Hash for Block {to_send:?} not found"
+                        ))
+                    })?;
+                    receipts.push(load_receipt(block_hash)?);
+                    to_send += 1;
+                }
+                receipts
+            }
+            // `header_number` is less or equal to `head_receipt_number` means the primary chain
+            // is ahead of the execution chain thus there is no receipt to submit.
+            Ordering::Less => vec![],
         };
 
         Ok(receipts)
