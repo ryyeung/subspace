@@ -189,9 +189,9 @@ where
                 }
                 receipts
             }
-            // `header_number` is less or equal to `head_receipt_number` means the primary chain
-            // is ahead of the execution chain thus there is no receipt to submit.
-            Ordering::Less => vec![],
+            Ordering::Less => unreachable!(
+                "header_number > head_receipt_number is checked before trying to produce bundle; qed"
+            ),
         };
 
         Ok(receipts)
